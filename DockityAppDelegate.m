@@ -23,11 +23,13 @@ static CGFloat hiddenDockWidth = 4;
 static CGFloat topMenuHeight = 22;
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
-  [self activateStatusMenu];
-  lastVisibleFrame = [[NSScreen mainScreen] visibleFrame];
-//  [NSTimer scheduledTimerWithTimeInterval:3 target:self selector:@selector(recalculate:) userInfo:nil repeats:YES];
-  [NSEvent addGlobalMonitorForEventsMatchingMask:NSLeftMouseDragged handler:^(NSEvent *event) { [self recalculate:event];
-  }];
+    [self activateStatusMenu];
+    lastVisibleFrame = [[NSScreen mainScreen] visibleFrame];
+    
+    //  [NSTimer scheduledTimerWithTimeInterval:3 target:self selector:@selector(recalculate:) userInfo:nil repeats:YES];
+    //[NSEvent addGlobalMonitorForEventsMatchingMask:NSLeftMouseDragged handler:^(NSEvent *event) { [self recalculate:event]; }];
+    [NSEvent addGlobalMonitorForEventsMatchingMask:(NSEventMaskLeftMouseDragged) handler:^(NSEvent *event) { [self recalculate:event]; }];
+    //[NSEvent addGlobalMonitorForEventsMatchingMask:(NSEventMaskLeftMouseUp) handler:^(NSEvent *event) { [self recalculate:event]; }];
 }
 
 - (void)activateStatusMenu
@@ -49,11 +51,14 @@ static CGFloat topMenuHeight = 22;
 }
 
 - (BOOL)shouldHideDockForWindowRect:(NSRect)winRect {
+    
+    int dockOffset = 15;
+    
   switch (lastDockPos) {
     case DockPosRight:
-      return winRect.origin.x + winRect.size.width > lastVisibleFrame.size.width;
+      return winRect.origin.x + winRect.size.width > lastVisibleFrame.size.width + dockOffset;
     case DockPosLeft:
-      return winRect.origin.x < lastVisibleFrame.origin.x;
+      return winRect.origin.x < lastVisibleFrame.origin.x + dockOffset;
     case DockPosBottom:
       return winRect.origin.y + winRect.size.height - topMenuHeight > lastVisibleFrame.size.height;
   }
@@ -107,13 +112,17 @@ static CGFloat topMenuHeight = 22;
 }
 
 - (long)currentAppPID {
-  NSDictionary *currentAppInfo = [[NSWorkspace sharedWorkspace] activeApplication];
-  return [[currentAppInfo objectForKey:@"NSApplicationProcessIdentifier"] longValue];
+  NSRunningApplication *currentAppInfo = [[NSWorkspace sharedWorkspace] frontmostApplication];
+    return (long)currentAppInfo.processIdentifier;
 }
 
-- (void)recalculate:(id)sender {
-  BOOL shouldHideDock = NO;
-//  BOOL shouldFillScreen = NO;
+- (void)recalculate:(NSEvent*)sender {
+    
+    [window setLevel: NSStatusWindowLevel];
+    
+    BOOL shouldHideDock = NO;
+  BOOL shouldFillScreen = NO;
+    
 //  long currentAppPID = [self currentAppPID];
   
   [self updateLastDockPos];
@@ -131,7 +140,7 @@ static CGFloat topMenuHeight = 22;
     }
     numTotal++;
     NSDictionary *bounds = [w objectForKey:@"kCGWindowBounds"];
-    
+      
     NSRect winRect = NSMakeRect([[bounds objectForKey:@"X"] floatValue], [[bounds objectForKey:@"Y"] floatValue], [[bounds objectForKey:@"Width"] floatValue], [[bounds objectForKey:@"Height"] floatValue]);
 
     if (!shouldHideDock) {
@@ -140,18 +149,22 @@ static CGFloat topMenuHeight = 22;
     if ([self isOutOfSightWindowRect:winRect]) {
       numOutOfSight++;
     }
+      
+      
+//#if 0
     
-#if 0
-    long pid = [[w objectForKey:@"kCGWindowOwnerPID"] longValue];
-    //TODO: If top-most window on screen takes full (visible) screen (without dock),
-    //hide dock, and resize it to fill the whole screen.
-    if (!shouldFillScreen && pid == currentAppPID) {
+      /*long pid = [[w objectForKey:@"kCGWindowOwnerPID"] longValue];
+      
+      //TODO: If top-most window on screen takes full (visible) screen (without dock),
+      //hide dock, and resize it to fill the whole screen.
+      if (pid == [self currentAppPID]) {
+        
       NSLog(@"HAVE: (%f, %f | %f, %f)", winRect.origin.x, winRect.origin.y, lastVisibleFrame.origin.x, lastVisibleFrame.origin.y);
       winRect.origin.y += topMenuHeight;
       shouldFillScreen = NSEqualRects(winRect, lastVisibleFrame);
       NSLog(@"Should fill screen: %d", shouldFillScreen);
-    }
-#endif
+    }*/
+//#endif
   }
   CFRelease(windows);
   
@@ -160,9 +173,10 @@ static CGFloat topMenuHeight = 22;
   }
   // Heuristics to detect Exposé "show desktop".
   // At least half of windows must be out of sight.
-  if (numOutOfSight >= numTotal/2) {
+    
+  /*if (numOutOfSight >= numTotal/2) {
     return;
-  }
+  }*/
   
   NSString *msg;
   if (shouldHideDock) {

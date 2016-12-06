@@ -9,6 +9,7 @@
 #import <Cocoa/Cocoa.h>
 
 @interface DockityAppDelegate : NSObject <NSApplicationDelegate> {
+    
   NSWindow *window;
   NSRect lastVisibleFrame;
   char lastDockPos;
